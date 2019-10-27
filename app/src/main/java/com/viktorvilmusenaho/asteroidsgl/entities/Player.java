@@ -8,6 +8,7 @@ import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 public class Player extends GLEntity {
 
     public static final float TIME_BETWEEN_SHOTS = 0.1f;
+    private static final int GRACE_PERIOD_LENGTH = 60;
     private static final String TAG = "Player";
     static final float ROTATION_VELOCITY = 270f; //TODO: game play values!
     static final float MAX_VEL = 100f;
@@ -15,6 +16,7 @@ public class Player extends GLEntity {
     static final float DRAG = 0.99f;
 
     private float _bulletCooldown = 0;
+    private float _gracePeriod = 0;
 
     public Player(float x, float y) {
         super();
@@ -35,6 +37,7 @@ public class Player extends GLEntity {
     @Override
     public void update(double dt) {
         _bulletCooldown -= dt;
+        _gracePeriod -= dt;
         if (_game._inputs._pressingA && _bulletCooldown <= 0) {
             setColors(1, 0, 1, 1);
             if (_game.maybeFireBullet(this)) {
@@ -57,8 +60,13 @@ public class Player extends GLEntity {
     }
 
     @Override
+    public void onCollision(GLEntity that) {
+        _gracePeriod = GRACE_PERIOD_LENGTH;
+    }
+
+    @Override
     public boolean isColliding(final GLEntity that) {
-        return areBoundingSpheresOverlapping(this, that);
+        return _gracePeriod > 0 && areBoundingSpheresOverlapping(this, that);
     }
 
     @Override
