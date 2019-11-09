@@ -12,6 +12,7 @@ import com.viktorvilmusenaho.asteroidsgl.GL.GLManager;
 import com.viktorvilmusenaho.asteroidsgl.entities.Asteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Border;
 import com.viktorvilmusenaho.asteroidsgl.entities.Bullet;
+import com.viktorvilmusenaho.asteroidsgl.entities.Debris;
 import com.viktorvilmusenaho.asteroidsgl.entities.GLEntity;
 import com.viktorvilmusenaho.asteroidsgl.entities.HalfAsteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Player;
@@ -77,6 +78,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
 
     public JukeBox _jukeBox = null;
     private int _messageCounter = 0;
+    private ArrayList<Debris> _debrisPool = null;
 
     public Game(Context context) {
         super(context);
@@ -109,6 +111,8 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
             _bullets[i] = new Bullet();
             _bullets[i].killBullet();
         }
+        _additionalAsteroids = 0;
+        _currentLevel = 1;
         _lastTick = System.nanoTime() * NANOSECONDS_TO_SECONDS;
         _playerHealthText = new Text("Health 0", 10, 20);
         _scoreText = new Text("Score 0", 10, 10);
@@ -373,12 +377,12 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         return false;
     }
 
-    public void spawnAsteroids(int count, GLEntity asteroid) {
+    public void spawnAsteroids(int count, Asteroid asteroid) {
         for (int i = 0; i < count; i++) {
-            if (asteroid instanceof HalfAsteroid) {
-                _asteroidsToAdd.add(new QuarterAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points, _speedMultiplier));
-            } else {
-                _asteroidsToAdd.add(new HalfAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points, _speedMultiplier));
+            if (asteroid._width == Asteroid.SIZE) {
+                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, asteroid._width * 0.75f, _speedMultiplier, _debrisPool));
+            } else if (asteroid._width == Asteroid.SIZE * 0.75) {
+                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, asteroid._width * 0.5f, _speedMultiplier, _debrisPool));
             }
         }
     }

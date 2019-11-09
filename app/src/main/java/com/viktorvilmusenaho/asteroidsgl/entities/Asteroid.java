@@ -6,23 +6,26 @@ import com.viktorvilmusenaho.asteroidsgl.GL.Mesh;
 import com.viktorvilmusenaho.asteroidsgl.utils.JukeBox;
 import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 
-import java.nio.charset.MalformedInputException;
+import java.util.ArrayList;
 
 public class Asteroid extends GLEntity {
 
     private static final float POINTS_VALUE = 100;
-    private static final float SIZE = 12;
+    public static final float SIZE = 12;
     private static final float MAX_VEL = 14f;
     private static final float MIN_VEL = -14f;
     private static final int NUMBER_OF_CHILDREN = 2;
+
+    public ArrayList<Debris> _debrisPool = null;
     public int _points = 0;
 
-    public Asteroid(final float x, final float y, int points, float speedMult) {
+    public Asteroid(final float x, final float y, int points, float sizeMultiplier, float speedMultiplier, ArrayList<Debris> debrisPool) {
         _points = points < 3 ? 3 : points;
         _x = x;
         _y = y;
         build(SIZE);
-        setSpeed(MIN_VEL * speedMult, MAX_VEL * speedMult);
+        setSpeed(MIN_VEL * speedMultiplier, MAX_VEL * speedMultiplier);
+        _debrisPool = debrisPool;
     }
 
     public void build(float size) {
