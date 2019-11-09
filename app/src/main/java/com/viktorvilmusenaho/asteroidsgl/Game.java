@@ -19,6 +19,8 @@ import com.viktorvilmusenaho.asteroidsgl.entities.QuarterAsteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Star;
 import com.viktorvilmusenaho.asteroidsgl.entities.Text;
 import com.viktorvilmusenaho.asteroidsgl.input.InputManager;
+import com.viktorvilmusenaho.asteroidsgl.utils.JukeBox;
+import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -35,13 +37,14 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     public static float METERS_TO_SHOW_Y = 90f; //TODO: calculate to match screen aspect ratio
     private static final int BG_COLOR = Color.rgb(100, 100, 100);
     private static int STAR_COUNT = 100;
-    private static int ASTEROID_COUNT = 8;
+    private static int ASTEROID_COUNT = 3;
     public static long SECOND_IN_NANOSECONDS = 1000000000;
     public static long MILLISECOND_IN_NANOSECONDS = 1000000;
     public static float NANOSECONDS_TO_MILLISECONDS = 1.0f / MILLISECOND_IN_NANOSECONDS;
     public static float NANOSECONDS_TO_SECONDS = 1.0f / SECOND_IN_NANOSECONDS;
     private static final int BULLET_COUNT = (int) (Bullet.TIME_TO_LIVE / Player.TIME_BETWEEN_SHOTS) + 1;
     private static final int FPS_CALC_INTERVAL = 10;
+    private static final int NEXT_LEVEL_MESSAGE_DURATION = 150;
 
     final double dt = 0.01;
     double accumulator = 0.0;
@@ -50,10 +53,10 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private ArrayList<Star> _stars = new ArrayList<>();
     private ArrayList<Asteroid> _asteroids = new ArrayList<>();
     private ArrayList<Asteroid> _asteroidsToAdd = new ArrayList<>();
-    private ArrayList<Text> _texts = new ArrayList<>();
-    private Text _frameCountText = null;
     Bullet[] _bullets = new Bullet[BULLET_COUNT];
-    private Player _player = null;
+    private float _speedMultiplier = 1f;
+    private int _additionalAsteroids = 0;
+    public Player _player = null;
     private Border _border = null;
     private float[] _viewportMatrix = new float[4 * 4]; //In essence, it is our our Camera
     public InputManager _inputs = new InputManager(); //empty but valid default
@@ -61,6 +64,19 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private double _framesPerSecond = 0;
     private double _totalFrames = 0;
     private double _lastTick = 0;
+    private Text _frameCountText = null;
+    private Text _levelText = null;
+    private Text _playerHealthText = null;
+    private Text _gameOverText = null;
+    private Text _gameOverMessage = null;
+    private Text _scoreText = null;
+    private Text _newLevelText = null;
+    private Text _newLevelInfo = null;
+    private boolean _gameOver;
+    private int _currentLevel = 1;
+
+    public JukeBox _jukeBox = null;
+    private int _messageCounter = 0;
 
     public Game(Context context) {
         super(context);
@@ -77,14 +93,50 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         setEGLContextClientVersion(2);
         setPreserveEGLContextOnPause(true); //context *may* be preserved and thus *may* avoid slow reloads when switching apps.
         // we always re-create the OpenGL context in onSurfaceCreated, so we're safe either way.
+        resetGame();
+        final String gameOverText = "GAME OVER";
+        final String gameOverMessage = "Press B to play again";
+        float textWidth = gameOverText.length() * (Text.GLYPH_WIDTH + Text.GLYPH_SPACING);
+        _gameOverText = new Text(gameOverText, WORLD_WIDTH / 2 - (textWidth / 4), WORLD_HEIGHT * 0.4f); // I have no idea why "textWidth / 4" gives the right offset...
+        textWidth = gameOverMessage.length() * (Text.GLYPH_WIDTH + Text.GLYPH_SPACING);
+        _gameOverMessage = new Text(gameOverMessage, WORLD_WIDTH / 2 - (textWidth / 4), WORLD_HEIGHT * 0.5f);
+        _jukeBox = new JukeBox(this.getContext());
+        setRenderer(this);
+    }
 
+    private void resetGame() {
         for (int i = 0; i < BULLET_COUNT; i++) {
             _bullets[i] = new Bullet();
             _bullets[i].killBullet();
         }
         _lastTick = System.nanoTime() * NANOSECONDS_TO_SECONDS;
-        _frameCountText = new Text("0", WORLD_WIDTH - 28, 10);
-        setRenderer(this);
+        _playerHealthText = new Text("Health 0", 10, 20);
+        _scoreText = new Text("Score 0", 10, 10);
+        _levelText = new Text("Level 1", WORLD_WIDTH - 32, 10);
+        _frameCountText = new Text("0", WORLD_WIDTH - 28, 20);
+        try {
+            _asteroids.clear();
+            _stars.clear();
+        } catch (Exception e) {
+            Log.d(TAG, "could not clear entity lists: " + e.getMessage());
+        }
+    }
+
+    private void initiateEntities() {
+        _player = new Player(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f);
+        _border = new Border(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f, WORLD_WIDTH, WORLD_HEIGHT);
+        for (int i = 0; i < STAR_COUNT; i++) {
+            _stars.add(new Star(Utils.nextInt((int) WORLD_WIDTH), Utils.nextInt((int) WORLD_HEIGHT)));
+        }
+        for (int i = 0; i < ASTEROID_COUNT; i++) {
+            _asteroids.add(new Asteroid(i * 20, WORLD_HEIGHT / 2, (i % 2) + 5, 1));
+        }
+    }
+
+    private void newAsteroids(final int additionalAsteroids, final float speedMultiplier){
+        for (int i = 0; i < ASTEROID_COUNT + additionalAsteroids; i++) {
+            _asteroids.add(new Asteroid(i * 20, WORLD_HEIGHT / 2, (i % 2) + 5, speedMultiplier));
+        }
     }
 
     public void setControls(final InputManager input) {
@@ -98,16 +150,9 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         float green = Color.green(BG_COLOR) / 255f;
         float blue = Color.blue(BG_COLOR) / 255f;
         float alpha = 1f;
-        _player = new Player(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f);
-        _border = new Border(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f, WORLD_WIDTH, WORLD_HEIGHT);
         GLES20.glClearColor(red, green, blue, alpha);
-        Random r = new Random();
-        for (int i = 0; i < STAR_COUNT; i++) {
-            _stars.add(new Star(r.nextInt((int) WORLD_WIDTH), r.nextInt((int) WORLD_HEIGHT)));
-        }
-        for (int i = 0; i < ASTEROID_COUNT; i++) {
-            _asteroids.add(new Asteroid(i * 20, WORLD_HEIGHT / 2, (i % 2) + 5));
-        }
+        initiateEntities();
+        _jukeBox.play(JukeBox.BACKGROUND, -1, 3);
     }
 
     @Override
@@ -124,26 +169,64 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     //trying a fixed time-step with accumulator, courtesy of
     //   https://gafferongames.com/post/fix_your_timestep/
     private void update() {
-        final double newTime = System.nanoTime() * NANOSECONDS_TO_SECONDS;
-        final double frameTime = newTime - currentTime;
-        currentTime = newTime;
-        accumulator += frameTime;
-        while (accumulator >= dt) {
-            for (final Asteroid a : _asteroids) {
-                a.update(dt);
+        if (!_gameOver) {
+            final double newTime = System.nanoTime() * NANOSECONDS_TO_SECONDS;
+            final double frameTime = newTime - currentTime;
+            currentTime = newTime;
+            accumulator += frameTime;
+            while (accumulator >= dt) {
+                for (final Asteroid a : _asteroids) {
+                    a.update(dt);
+                }
+                _player.update(dt);
+                accumulator -= dt;
             }
-            _player.update(dt);
-            accumulator -= dt;
-        }
-        for (final Bullet b : _bullets) {
-            if (!b.isAlive()) {
-                continue;
+            for (final Bullet b : _bullets) {
+                if (!b.isAlive()) {
+                    continue;
+                }
+                b.update(dt);
             }
-            b.update(dt);
+            collisionDetection();
+            removeDeadEntities();
+            addNewAsteroids();
+            checkGameOver();
+            checkLevelCleared();
+        } else {
+            if (_inputs._pressingA) {
+                resetGame();
+                initiateEntities();
+                _gameOver = false;
+            }
         }
-        collisionDetection();
-        removeDeadEntities();
-        addNewAsteroids();
+    }
+
+    private void checkGameOver() {
+        if (_player._health < 0) {
+            _gameOver = true;
+        }
+    }
+
+    private void checkLevelCleared() {
+        if (_asteroids.size() == 0) {
+            _jukeBox.play(JukeBox.START, 0, 3);
+            _additionalAsteroids++;
+            _currentLevel++;
+            _speedMultiplier += 0.1f;
+            generateNextLevelText();
+            newAsteroids(_additionalAsteroids, _speedMultiplier);
+            _player.setGracePeriod();
+        }
+    }
+
+    private void generateNextLevelText() {
+        String nextLevelText = String.format("Level %s", _additionalAsteroids + 1);
+        String nextLevelInfo = String.format("%s Asteroids at %sz speed", ASTEROID_COUNT + _additionalAsteroids, (int) (_speedMultiplier * 100));
+        float textWidth = nextLevelText.length() * (Text.GLYPH_WIDTH + Text.GLYPH_SPACING);
+        _newLevelText = new Text(nextLevelText, WORLD_WIDTH / 2 - (textWidth / 4), WORLD_HEIGHT * 0.4f); // I have no idea why "textWidth / 4" gives the right offset... Shouldn't it be /2?
+        textWidth = nextLevelInfo.length() * (Text.GLYPH_WIDTH + Text.GLYPH_SPACING);
+        _newLevelInfo = new Text(nextLevelInfo, WORLD_WIDTH / 2 - (textWidth / 4), WORLD_HEIGHT * 0.5f);
+        _messageCounter = NEXT_LEVEL_MESSAGE_DURATION;
     }
 
     private void addNewAsteroids() {
@@ -168,25 +251,58 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         for (final Star s : _stars) {
             s.render(_viewportMatrix);
         }
-        for (final Asteroid a : _asteroids) {
-            if (a.isDead()) {
-                continue;
-            } //skip
-            a.render(_viewportMatrix);
+        if (!_gameOver) {
+            for (final Asteroid a : _asteroids) {
+                if (a.isDead()) {
+                    continue;
+                } //skip
+                a.render(_viewportMatrix);
+            }
+            _player.render(_viewportMatrix);
+            for (final Bullet b : _bullets) {
+                if (!b.isAlive()) {
+                    continue;
+                } //skip
+                b.render(_viewportMatrix);
+            }
+            _border.render(_viewportMatrix);
+            renderHUD();
+        } else {
+            renderGameOver();
         }
-        _player.render(_viewportMatrix);
-        for (final Text t : _texts) {
+    }
 
-            t.render(_viewportMatrix);
-        }
-        for (final Bullet b : _bullets) {
-            if (!b.isAlive()) {
-                continue;
-            } //skip
-            b.render(_viewportMatrix);
-        }
-        _border.render(_viewportMatrix);
+    private void renderHUD() {
         renderFPS();
+        renderLevelText();
+        renderScoreText();
+        renderPlayerHealth();
+        if(_messageCounter > 0){
+            renderNextLevel();
+            _messageCounter--;
+        }
+    }
+
+    private void renderNextLevel() {
+        _newLevelText.render(_viewportMatrix);
+        _newLevelInfo.render(_viewportMatrix);
+    }
+
+    private void renderScoreText() {
+        _scoreText.setString(String.format("Score %s", _player._playerScore));
+        _scoreText.render(_viewportMatrix);
+    }
+
+    private void renderPlayerHealth() {
+        if (_player._health >= 0) {
+            _playerHealthText.setString(String.format("Health %s", _player._health));
+        }
+        _playerHealthText.render(_viewportMatrix);
+    }
+
+    private void renderLevelText() {
+        _levelText.setString(String.format("Level %s", _currentLevel));
+        _levelText.render(_viewportMatrix);
     }
 
     private void renderFPS() {
@@ -196,6 +312,11 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         }
         _totalFrames++;
         _frameCountText.render(_viewportMatrix);
+    }
+
+    private void renderGameOver() {
+        _gameOverText.render(_viewportMatrix);
+        _gameOverMessage.render(_viewportMatrix);
     }
 
     private double calculateFPS(float now) {
@@ -245,6 +366,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         for (final Bullet b : _bullets) {
             if (!b.isAlive()) {
                 b.fireFrom(source);
+                _jukeBox.play(JukeBox.SHOOT, 0, 1);
                 return true;
             }
         }
@@ -254,11 +376,22 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     public void spawnAsteroids(int count, GLEntity asteroid) {
         for (int i = 0; i < count; i++) {
             if (asteroid instanceof HalfAsteroid) {
-                _asteroidsToAdd.add(new QuarterAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points));
-            }
-            else {
-                _asteroidsToAdd.add(new HalfAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points));
+                _asteroidsToAdd.add(new QuarterAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points, _speedMultiplier));
+            } else {
+                _asteroidsToAdd.add(new HalfAsteroid(asteroid.centerX(), asteroid.centerY(), ((Asteroid) asteroid)._points, _speedMultiplier));
             }
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        _jukeBox.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        _jukeBox.onResume();
     }
 }

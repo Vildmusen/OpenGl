@@ -3,6 +3,7 @@ package com.viktorvilmusenaho.asteroidsgl.entities;
 import android.opengl.GLES20;
 
 import com.viktorvilmusenaho.asteroidsgl.GL.Mesh;
+import com.viktorvilmusenaho.asteroidsgl.utils.JukeBox;
 import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 
 import java.nio.charset.MalformedInputException;
@@ -16,12 +17,12 @@ public class Asteroid extends GLEntity {
     private static final int NUMBER_OF_CHILDREN = 2;
     public int _points = 0;
 
-    public Asteroid(final float x, final float y, int points) {
+    public Asteroid(final float x, final float y, int points, float speedMult) {
         _points = points < 3 ? 3 : points;
         _x = x;
         _y = y;
         build(SIZE);
-        setSpeed(MIN_VEL, MAX_VEL);
+        setSpeed(MIN_VEL * speedMult, MAX_VEL * speedMult);
     }
 
     public void build(float size) {
@@ -39,10 +40,19 @@ public class Asteroid extends GLEntity {
         _velR = Utils.between(min*4, max*4);
     }
 
+    public void scatterPieces(float size){
+        for (int i = 0; i < size; i++){
+            //TODO asteroids fall apart on death
+        }
+    }
+
     @Override
     public void onCollision(GLEntity that) {
         _isAlive = false;
         _game.spawnAsteroids(NUMBER_OF_CHILDREN, this);
+        _game._player._playerScore += POINTS_VALUE;
+        _game._jukeBox.play(JukeBox.DAMAGE, 0, 2);
+        scatterPieces(SIZE);
     }
 
     @Override

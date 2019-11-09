@@ -10,8 +10,9 @@ public class Border extends GLEntity {
         super();
         _x = x;
         _y = y;
-        _width = worldWidth + 1.0f;
+        _width = worldWidth + 1.0f; //-1 so the border isn't obstructed by the screen edge
         _height = worldHeight + 1.0f;
+
         // shortening the variable names to keep the vertex array readable
         final float w = worldWidth;
         final float h = worldHeight;

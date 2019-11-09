@@ -26,7 +26,7 @@
         android:layout_width="@dimen/keypad_size"
         android:layout_height="@dimen/keypad_size"
         android:layout_alignParentEnd="true"
-        android:background="@drawable/ic_eject_black_24dp" />
+        android:background="@drawable/ic_format_color_text_black_24dp" />
 
     <Button
         android:id="@+id/keypad_a"
@@ -34,5 +34,5 @@
         android:layout_height="@dimen/keypad_size"
         android:layout_marginEnd="48dp"
         android:layout_toStartOf="@+id/keypad_b"
-        android:background="@drawable/ic_error_outline_black_24dp" />
+        android:background="@drawable/ic_format_bold_black_24dp" />
 </RelativeLayout>
