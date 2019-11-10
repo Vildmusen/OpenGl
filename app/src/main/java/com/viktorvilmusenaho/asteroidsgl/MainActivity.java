@@ -45,4 +45,10 @@ public class MainActivity extends AppCompatActivity {
         );
 
     }
+
+    @Override
+    protected void onDestroy() {
+        _game._jukeBox.destroy();
+        super.onDestroy();
+    }
 }

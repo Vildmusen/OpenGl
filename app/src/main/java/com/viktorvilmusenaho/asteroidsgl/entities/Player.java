@@ -21,6 +21,8 @@ public class Player extends GLEntity {
     private float _gracePeriod = 0;
     public int _health = STARTING_HEALTH;
     public int _playerScore = 0;
+    private Flame _flame = null;
+    private boolean _isBoosting = false;
 
     public Player(float x, float y) {
         super();
@@ -36,6 +38,7 @@ public class Player extends GLEntity {
         _mesh = new Mesh(vertices, GLES20.GL_TRIANGLES);
         _mesh.setWidthHeight(_width, _height);
         _mesh.flipY();
+        _flame = new Flame(x, y);
     }
 
     @Override
@@ -56,6 +59,9 @@ public class Player extends GLEntity {
             final float theta = _rotation * (float) Utils.TO_RAD;
             _velX += (float) Math.sin(theta) * THRUST;
             _velY -= (float) Math.cos(theta) * THRUST;
+            _isBoosting = true;
+        } else {
+            _isBoosting = false;
         }
         _velX *= DRAG;
         _velY *= DRAG;
@@ -70,6 +76,7 @@ public class Player extends GLEntity {
                     1f - 1f *  _gracePeriod / GRACE_PERIOD_LENGTH,
                     1f); //RED -> WHITE gradient during grace period.
         }
+        _flame.update(dt, _x, _y);
         super.update(dt);
     }
 
@@ -94,5 +101,8 @@ public class Player extends GLEntity {
     @Override
     public void render(float[] viewportMatrix) {
         super.render(viewportMatrix);
+        if(_isBoosting) {
+            _flame.render(viewportMatrix);
+        }
     }
 }

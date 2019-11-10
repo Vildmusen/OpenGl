@@ -14,17 +14,15 @@ import com.viktorvilmusenaho.asteroidsgl.entities.Border;
 import com.viktorvilmusenaho.asteroidsgl.entities.Bullet;
 import com.viktorvilmusenaho.asteroidsgl.entities.Debris;
 import com.viktorvilmusenaho.asteroidsgl.entities.GLEntity;
-import com.viktorvilmusenaho.asteroidsgl.entities.HalfAsteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Player;
-import com.viktorvilmusenaho.asteroidsgl.entities.QuarterAsteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Star;
 import com.viktorvilmusenaho.asteroidsgl.entities.Text;
 import com.viktorvilmusenaho.asteroidsgl.input.InputManager;
 import com.viktorvilmusenaho.asteroidsgl.utils.JukeBox;
 import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 
+import java.io.BufferedReader;
 import java.util.ArrayList;
-import java.util.Random;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -37,6 +35,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     public static float METERS_TO_SHOW_X = 160f; //160m x 90m, the entire game world in view
     public static float METERS_TO_SHOW_Y = 90f; //TODO: calculate to match screen aspect ratio
     private static final int BG_COLOR = Color.rgb(100, 100, 100);
+    private static final int DEBRIS_COUNT = 100;
     private static int STAR_COUNT = 100;
     private static int ASTEROID_COUNT = 3;
     public static long SECOND_IN_NANOSECONDS = 1000000000;
@@ -46,6 +45,8 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private static final int BULLET_COUNT = (int) (Bullet.TIME_TO_LIVE / Player.TIME_BETWEEN_SHOTS) + 1;
     private static final int FPS_CALC_INTERVAL = 10;
     private static final int NEXT_LEVEL_MESSAGE_DURATION = 150;
+    private static float HALF_ASTEROID_SIZE = 0.75f;
+    private static float QUARTER_ASTEROID_SIZE = 0.5f;
 
     final double dt = 0.01;
     double accumulator = 0.0;
@@ -78,7 +79,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
 
     public JukeBox _jukeBox = null;
     private int _messageCounter = 0;
-    private ArrayList<Debris> _debrisPool = null;
+    private ArrayList<Debris> _debrisPool = new ArrayList<>();
 
     public Game(Context context) {
         super(context);
@@ -106,6 +107,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         setRenderer(this);
     }
 
+    // Extracted initialization to be run again at game restart
     private void resetGame() {
         for (int i = 0; i < BULLET_COUNT; i++) {
             _bullets[i] = new Bullet();
@@ -133,13 +135,16 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
             _stars.add(new Star(Utils.nextInt((int) WORLD_WIDTH), Utils.nextInt((int) WORLD_HEIGHT)));
         }
         for (int i = 0; i < ASTEROID_COUNT; i++) {
-            _asteroids.add(new Asteroid(i * 20, WORLD_HEIGHT / 2, (i % 2) + 5, 1));
+            _asteroids.add(new Asteroid(i * 20 * Utils.nextFloat(), WORLD_HEIGHT * Utils.nextFloat(), (i % 2) + 5, 1, 1, _debrisPool));
+        }
+        for (int i = 0; i < DEBRIS_COUNT; i++) {
+            _debrisPool.add(new Debris());
         }
     }
 
     private void newAsteroids(final int additionalAsteroids, final float speedMultiplier){
         for (int i = 0; i < ASTEROID_COUNT + additionalAsteroids; i++) {
-            _asteroids.add(new Asteroid(i * 20, WORLD_HEIGHT / 2, (i % 2) + 5, speedMultiplier));
+            _asteroids.add(new Asteroid(i * 20 * Utils.nextFloat(), WORLD_HEIGHT * Utils.nextFloat(), (i % 2) + 5, 1, speedMultiplier, _debrisPool));
         }
     }
 
@@ -191,6 +196,12 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 }
                 b.update(dt);
             }
+            for (final Debris d : _debrisPool) {
+                if (d.isDead()) {
+                    continue;
+                }
+                d.update(dt);
+            }
             collisionDetection();
             removeDeadEntities();
             addNewAsteroids();
@@ -206,7 +217,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     }
 
     private void checkGameOver() {
-        if (_player._health < 0) {
+        if (_player._health <= 0) {
             _gameOver = true;
         }
     }
@@ -219,6 +230,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
             _speedMultiplier += 0.1f;
             generateNextLevelText();
             newAsteroids(_additionalAsteroids, _speedMultiplier);
+            killAllBullets();
             _player.setGracePeriod();
         }
     }
@@ -268,6 +280,12 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                     continue;
                 } //skip
                 b.render(_viewportMatrix);
+            }
+            for (final Debris d : _debrisPool) {
+                if (d.isDead()) {
+                    continue;
+                }
+                d.render(_viewportMatrix);
             }
             _border.render(_viewportMatrix);
             renderHUD();
@@ -377,12 +395,18 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         return false;
     }
 
+    private void killAllBullets() {
+        for (final Bullet b : _bullets) {
+            b.killBullet();
+        }
+    }
+
     public void spawnAsteroids(int count, Asteroid asteroid) {
         for (int i = 0; i < count; i++) {
             if (asteroid._width == Asteroid.SIZE) {
-                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, asteroid._width * 0.75f, _speedMultiplier, _debrisPool));
+                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, HALF_ASTEROID_SIZE, _speedMultiplier, _debrisPool));
             } else if (asteroid._width == Asteroid.SIZE * 0.75) {
-                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, asteroid._width * 0.5f, _speedMultiplier, _debrisPool));
+                _asteroidsToAdd.add(new Asteroid(asteroid.centerX(), asteroid.centerY(), asteroid._points, QUARTER_ASTEROID_SIZE, _speedMultiplier, _debrisPool));
             }
         }
     }
@@ -398,4 +422,6 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         super.onResume();
         _jukeBox.onResume();
     }
+
+
 }

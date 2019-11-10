@@ -23,7 +23,7 @@ public class Asteroid extends GLEntity {
         _points = points < 3 ? 3 : points;
         _x = x;
         _y = y;
-        build(SIZE);
+        build(SIZE * sizeMultiplier);
         setSpeed(MIN_VEL * speedMultiplier, MAX_VEL * speedMultiplier);
         _debrisPool = debrisPool;
     }
@@ -31,21 +31,28 @@ public class Asteroid extends GLEntity {
     public void build(float size) {
         _width = size;
         _height = _width;
-        final double radius = _width*0.5;
+        final double radius = _width * 0.5;
         final float[] vertices = Mesh.generateLinePolygon(_points, radius);
         _mesh = new Mesh(vertices, GLES20.GL_LINES);
         _mesh.setWidthHeight(_width, _height);
     }
 
-    public void setSpeed(float min, float max){
+    public void setSpeed(float min, float max) {
         _velX = Utils.between(min, max);
         _velY = Utils.between(min, max);
-        _velR = Utils.between(min*4, max*4);
+        _velR = Utils.between(min * 4, max * 4);
     }
 
-    public void scatterPieces(float size){
-        for (int i = 0; i < size; i++){
-            //TODO asteroids fall apart on death
+    public void scatterPieces(float size) {
+        float count = size;
+        for (Debris d : _debrisPool) {
+            if (!d.isDead()) {
+                continue;
+            }
+            if (count > 0) {
+                d.spawn(_x, _y);
+                count--;
+            }
         }
     }
 
