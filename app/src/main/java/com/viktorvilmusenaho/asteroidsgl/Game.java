@@ -218,7 +218,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
             checkGameOver();
             checkLevelCleared();
         } else {
-            if (_inputs._justReleasedA) {
+            if (_inputs._pressingA) {
                 resetGame();
                 initiateEntities();
                 _gameOver = false;
