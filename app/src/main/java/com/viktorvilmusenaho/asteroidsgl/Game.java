@@ -23,6 +23,7 @@ import com.viktorvilmusenaho.asteroidsgl.utils.JukeBox;
 import com.viktorvilmusenaho.asteroidsgl.utils.Utils;
 
 import java.io.BufferedReader;
+import java.io.UTFDataFormatException;
 import java.util.ArrayList;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -33,8 +34,9 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private static final String TAG = "GAME";
     public static final float WORLD_WIDTH = 160f;
     public static final float WORLD_HEIGHT = 90f;
-    public static float METERS_TO_SHOW_X = 160f; //160m x 90m, the entire game world in view
-    public static float METERS_TO_SHOW_Y = 90f; //TODO: calculate to match screen aspect ratio
+    private static final float SHIP_SPAWN_CHANCE = 0.002f;
+    public static float METERS_TO_SHOW_X = 160f;
+    public static float METERS_TO_SHOW_Y = 90f;
     private static final int BG_COLOR = Color.rgb(100, 100, 100);
     private static final int DEBRIS_COUNT = 100;
     private static int STAR_COUNT = 100;
@@ -56,10 +58,10 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private ArrayList<Star> _stars = new ArrayList<>();
     private ArrayList<Asteroid> _asteroids = new ArrayList<>();
     private ArrayList<Asteroid> _asteroidsToAdd = new ArrayList<>();
-    private EnemyShip _enemyship = null;
     private Bullet[] _bullets = new Bullet[BULLET_COUNT];
     private float _speedMultiplier = 1f;
     private int _additionalAsteroids = 0;
+    private EnemyShip _enemyship = null;
     public Player _player = null;
     private Border _border = null;
     private float[] _viewportMatrix = new float[4 * 4]; //In essence, it is our our Camera
@@ -134,7 +136,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private void initiateEntities() {
         _player = new Player(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f);
         _border = new Border(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f, WORLD_WIDTH, WORLD_HEIGHT);
-        _enemyship = new EnemyShip(WORLD_WIDTH, WORLD_HEIGHT / 4f, _debrisPool);
+        _enemyship = new EnemyShip(_debrisPool);
         for (int i = 0; i < STAR_COUNT; i++) {
             _stars.add(new Star(Utils.nextInt((int) WORLD_WIDTH), Utils.nextInt((int) WORLD_HEIGHT)));
         }
@@ -191,7 +193,9 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 for (final Asteroid a : _asteroids) {
                     a.update(dt);
                 }
-                _enemyship.update(dt);
+                if(_enemyship._isAlive){
+                    _enemyship.update(dt);
+                }
                 _player.update(dt);
                 accumulator -= dt;
             }
@@ -207,17 +211,24 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 }
                 d.update(dt);
             }
+            maybeSpawnShip();
             collisionDetection();
             removeDeadEntities();
             addNewAsteroids();
             checkGameOver();
             checkLevelCleared();
         } else {
-            if (_inputs._pressingA) {
+            if (_inputs._justReleasedA) {
                 resetGame();
                 initiateEntities();
                 _gameOver = false;
             }
+        }
+    }
+
+    private void maybeSpawnShip() {
+        if(Utils.nextFloat() < SHIP_SPAWN_CHANCE && _enemyship.isDead()) {
+            _enemyship.spawn();
         }
     }
 
@@ -292,7 +303,9 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 }
                 d.render(_viewportMatrix);
             }
-            _enemyship.render(_viewportMatrix);
+            if(_enemyship._isAlive){
+                _enemyship.render(_viewportMatrix);
+            }
             _border.render(_viewportMatrix);
             renderHUD();
         } else {
@@ -368,8 +381,12 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 }
             }
             if (!b._playerFriendly && b.isColliding(_player)) {
-                b.onCollision(_player);
                 _player.onCollision(b);
+                b.onCollision(_player);
+            }
+            if(_enemyship != null && b._playerFriendly && _enemyship.isColliding(b)){
+                _enemyship.onCollision(b);
+                b.onCollision(_enemyship);
             }
         }
         for (final Asteroid a : _asteroids) {
@@ -380,6 +397,10 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 _player.onCollision(a);
                 a.onCollision(_player);
             }
+        }
+        if(_enemyship != null && _player.isColliding(_enemyship)){
+            _player.onCollision(_enemyship);
+            _enemyship.onCollision(_player);
         }
     }
 

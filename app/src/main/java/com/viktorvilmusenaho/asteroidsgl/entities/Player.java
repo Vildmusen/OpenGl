@@ -11,7 +11,7 @@ public class Player extends GLEntity {
     public static final float TIME_BETWEEN_SHOTS = 0.1f;
     private static final float GRACE_PERIOD_LENGTH = 1.5f;
     private static final String TAG = "Player";
-    static final float ROTATION_VELOCITY = 330f; //TODO: game play values!
+    static final float ROTATION_VELOCITY = 330f;
     static final float MAX_VEL = 100f;
     static final float THRUST = 8f;
     static final float DRAG = 0.99f;
@@ -28,7 +28,7 @@ public class Player extends GLEntity {
         super();
         _x = x;
         _y = y;
-        _width = 8f; //TODO: gAmEPlaY VaLuES
+        _width = 8f;
         _height = 12f;
         float vertices[] = { // in counterclockwise order:
                 0.0f, 0.5f, 0.0f,    // top
@@ -53,12 +53,13 @@ public class Player extends GLEntity {
     public void update(double dt) {
         _bulletCoolDown -= dt;
         _gracePeriod = _gracePeriod > 0 ? _gracePeriod -= dt : 0;
-        if (_game._inputs._pressingA && _bulletCoolDown <= 0) {
+        if (_game._inputs._justPressedA && _bulletCoolDown <= 0) {
             setColors(1, 0, 1, 1);
             if (_game.maybeFireBullet(this)) {
                 _game._jukeBox.play(JukeBox.SHOOT, 1, 1);
                 _bulletCoolDown = TIME_BETWEEN_SHOTS;
             }
+            _game._inputs._justPressedA = false;
         } else {
             setColors(1.0f, 1, 1, 1);
         }

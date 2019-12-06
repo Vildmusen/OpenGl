@@ -22,6 +22,7 @@ public class TouchController extends InputManager implements View.OnTouchListene
     public boolean onTouch(final View v, final MotionEvent event) {
         int action = event.getActionMasked();
         int id = v.getId();
+
         if(action == MotionEvent.ACTION_DOWN){
             // User started pressing a key
             if (id == R.id.keypad_left) {
@@ -31,6 +32,7 @@ public class TouchController extends InputManager implements View.OnTouchListene
             }
             if (id == R.id.keypad_a) {
                 _pressingA = true;
+                _justPressedA = true;
             }
             if (id == R.id.keypad_b) {
                 _pressingB = true;
@@ -44,6 +46,7 @@ public class TouchController extends InputManager implements View.OnTouchListene
             }
             if (id == R.id.keypad_a) {
                 _pressingA = false;
+                _justReleasedA = true;
             }
             if (id == R.id.keypad_b) {
                 _pressingB = false;

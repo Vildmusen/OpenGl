@@ -18,9 +18,11 @@ public class Asteroid extends GLEntity {
 
     public ArrayList<Debris> _debrisPool = null;
     public int _points = 0;
+    public float _pointsValue = 0;
 
     public Asteroid(final float x, final float y, int points, float sizeMultiplier, float speedMultiplier, ArrayList<Debris> debrisPool) {
         _points = points < 3 ? 3 : points;
+        _pointsValue = POINTS_VALUE * 2 - (POINTS_VALUE * sizeMultiplier);
         _x = x;
         _y = y;
         build(SIZE * sizeMultiplier);
@@ -59,13 +61,13 @@ public class Asteroid extends GLEntity {
     @Override
     public void onCollision(GLEntity that) {
         if(that instanceof Bullet){
-            if(((Bullet) that)._playerFriendly){
+            if(!((Bullet) that)._playerFriendly){
                 return;
             }
         }
         _isAlive = false;
         _game.spawnAsteroids(NUMBER_OF_CHILDREN, this);
-        _game._player._playerScore += POINTS_VALUE;
+        _game._player._playerScore += _pointsValue;
         _game._jukeBox.play(JukeBox.DAMAGE, 0, 2);
         scatterPieces(SIZE);
     }
