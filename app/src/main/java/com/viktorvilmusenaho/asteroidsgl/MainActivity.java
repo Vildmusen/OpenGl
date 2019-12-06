@@ -51,4 +51,18 @@ public class MainActivity extends AppCompatActivity {
         _game._jukeBox.destroy();
         super.onDestroy();
     }
+
+    @Override
+    protected void onPause() {
+        _game._jukeBox.onPause();
+        _game._paused = true;
+        super.onPause();
+    }
+
+    @Override
+    protected void onPostResume() {
+        _game._jukeBox.onResume();
+        _game._paused = false;
+        super.onPostResume();
+    }
 }

@@ -58,6 +58,11 @@ public class Asteroid extends GLEntity {
 
     @Override
     public void onCollision(GLEntity that) {
+        if(that instanceof Bullet){
+            if(((Bullet) that)._playerFriendly){
+                return;
+            }
+        }
         _isAlive = false;
         _game.spawnAsteroids(NUMBER_OF_CHILDREN, this);
         _game._player._playerScore += POINTS_VALUE;

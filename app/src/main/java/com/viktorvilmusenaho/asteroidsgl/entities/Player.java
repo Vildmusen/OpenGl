@@ -33,9 +33,17 @@ public class Player extends GLEntity {
         float vertices[] = { // in counterclockwise order:
                 0.0f, 0.5f, 0.0f,    // top
                 -0.5f, -0.5f, 0.0f,    // bottom left
-                0.5f, -0.5f, 0.0f    // bottom right
+
+                -0.5f, -0.5f, 0.0f,    // bottom left
+                0.0f, -0.3f, 0.0f,   // bottom middle
+
+                0.0f, -0.3f, 0.0f,   // bottom middle
+                0.5f, -0.5f, 0.0f,    // bottom right
+
+                0.5f, -0.5f, 0.0f,    // bottom right
+                0.0f, 0.5f, 0.0f    // top
         };
-        _mesh = new Mesh(vertices, GLES20.GL_TRIANGLES);
+        _mesh = new Mesh(vertices, GLES20.GL_LINES);
         _mesh.setWidthHeight(_width, _height);
         _mesh.flipY();
         _flame = new Flame(x, y);
@@ -54,6 +62,7 @@ public class Player extends GLEntity {
         } else {
             setColors(1.0f, 1, 1, 1);
         }
+        _flame.update(dt, _x, _y);
         _rotation += (dt * ROTATION_VELOCITY) * _game._inputs._horizontalFactor;
         if (_game._inputs._pressingB) {
             final float theta = _rotation * (float) Utils.TO_RAD;
@@ -76,7 +85,6 @@ public class Player extends GLEntity {
                     1f - 1f *  _gracePeriod / GRACE_PERIOD_LENGTH,
                     1f); //RED -> WHITE gradient during grace period.
         }
-        _flame.update(dt, _x, _y);
         super.update(dt);
     }
 

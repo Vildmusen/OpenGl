@@ -6,13 +6,13 @@ import com.viktorvilmusenaho.asteroidsgl.GL.Mesh;
 
 public class Flame extends GLEntity {
 
-    static final float ROTATION_VELOCITY = 330f; //TODO: game play values!
+    static final float ROTATION_VELOCITY = 330f;
 
     public Flame(float x, float y){
         super();
         _x = x;
         _y = y;
-        _width = 5f; //TODO: gAmEPlaY VaLuES
+        _width = 5f;
         _height = 3f;
         float vertices[] = { // in counterclockwise order:
                 0.0f, 0.2f, 0.0f,    // top
@@ -25,8 +25,8 @@ public class Flame extends GLEntity {
 
     public void update(double dt, float x, float y) {
         _rotation += (dt * ROTATION_VELOCITY) * _game._inputs._horizontalFactor;
-        _x = x;
-        _y = y + 8;
+        _x = x - (float) (8 * Math.sin(Math.toRadians(_rotation)));
+        _y = y + (float) (8 * Math.cos(Math.toRadians(_rotation)));
         super.update(dt);
     }
 }

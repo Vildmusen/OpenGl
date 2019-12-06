@@ -13,6 +13,7 @@ import com.viktorvilmusenaho.asteroidsgl.entities.Asteroid;
 import com.viktorvilmusenaho.asteroidsgl.entities.Border;
 import com.viktorvilmusenaho.asteroidsgl.entities.Bullet;
 import com.viktorvilmusenaho.asteroidsgl.entities.Debris;
+import com.viktorvilmusenaho.asteroidsgl.entities.EnemyShip;
 import com.viktorvilmusenaho.asteroidsgl.entities.GLEntity;
 import com.viktorvilmusenaho.asteroidsgl.entities.Player;
 import com.viktorvilmusenaho.asteroidsgl.entities.Star;
@@ -55,7 +56,8 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private ArrayList<Star> _stars = new ArrayList<>();
     private ArrayList<Asteroid> _asteroids = new ArrayList<>();
     private ArrayList<Asteroid> _asteroidsToAdd = new ArrayList<>();
-    Bullet[] _bullets = new Bullet[BULLET_COUNT];
+    private EnemyShip _enemyship = null;
+    private Bullet[] _bullets = new Bullet[BULLET_COUNT];
     private float _speedMultiplier = 1f;
     private int _additionalAsteroids = 0;
     public Player _player = null;
@@ -80,6 +82,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     public JukeBox _jukeBox = null;
     private int _messageCounter = 0;
     private ArrayList<Debris> _debrisPool = new ArrayList<>();
+    public boolean _paused = false;
 
     public Game(Context context) {
         super(context);
@@ -131,6 +134,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
     private void initiateEntities() {
         _player = new Player(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f);
         _border = new Border(WORLD_WIDTH / 2f, WORLD_HEIGHT / 2f, WORLD_WIDTH, WORLD_HEIGHT);
+        _enemyship = new EnemyShip(WORLD_WIDTH, WORLD_HEIGHT / 4f, _debrisPool);
         for (int i = 0; i < STAR_COUNT; i++) {
             _stars.add(new Star(Utils.nextInt((int) WORLD_WIDTH), Utils.nextInt((int) WORLD_HEIGHT)));
         }
@@ -142,7 +146,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         }
     }
 
-    private void newAsteroids(final int additionalAsteroids, final float speedMultiplier){
+    private void newAsteroids(final int additionalAsteroids, final float speedMultiplier) {
         for (int i = 0; i < ASTEROID_COUNT + additionalAsteroids; i++) {
             _asteroids.add(new Asteroid(i * 20 * Utils.nextFloat(), WORLD_HEIGHT * Utils.nextFloat(), (i % 2) + 5, 1, speedMultiplier, _debrisPool));
         }
@@ -187,6 +191,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 for (final Asteroid a : _asteroids) {
                     a.update(dt);
                 }
+                _enemyship.update(dt);
                 _player.update(dt);
                 accumulator -= dt;
             }
@@ -287,6 +292,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                 }
                 d.render(_viewportMatrix);
             }
+            _enemyship.render(_viewportMatrix);
             _border.render(_viewportMatrix);
             renderHUD();
         } else {
@@ -299,7 +305,7 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
         renderLevelText();
         renderScoreText();
         renderPlayerHealth();
-        if(_messageCounter > 0){
+        if (_messageCounter > 0) {
             renderNextLevel();
             _messageCounter--;
         }
@@ -357,9 +363,13 @@ public class Game extends GLSurfaceView implements GLSurfaceView.Renderer {
                     if (a.isDead()) {
                         continue;
                     }
-                    b.onCollision(a); //notify each entity so they can decide what to do
+                    b.onCollision(a);
                     a.onCollision(b);
                 }
+            }
+            if (!b._playerFriendly && b.isColliding(_player)) {
+                b.onCollision(_player);
+                _player.onCollision(b);
             }
         }
         for (final Asteroid a : _asteroids) {
